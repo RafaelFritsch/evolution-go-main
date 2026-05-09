@@ -21,6 +21,157 @@ definitions:
       messageInfo:
         $ref: '#/definitions/go_mau_fi_whatsmeow_types.MessageInfo'
     type: object
+  github_com_EvolutionAPI_evolution-go_pkg_chatwoot_dto.ChatwootResponse:
+    properties:
+      accountId:
+        type: string
+      autoCreate:
+        type: boolean
+      conversationPending:
+        type: boolean
+      daysLimitImportMessages:
+        type: integer
+      enabled:
+        type: boolean
+      id:
+        type: integer
+      ignoreJids:
+        items:
+          type: string
+        type: array
+      importContacts:
+        type: boolean
+      importMessages:
+        type: boolean
+      inboxId:
+        type: integer
+      instanceId:
+        type: string
+      logo:
+        type: string
+      mergeBrazilContacts:
+        type: boolean
+      nameInbox:
+        type: string
+      organization:
+        type: string
+      reopenConversation:
+        type: boolean
+      signDelimiter:
+        type: string
+      signMsg:
+        type: boolean
+      token:
+        type: string
+      url:
+        type: string
+    type: object
+  github_com_EvolutionAPI_evolution-go_pkg_chatwoot_dto.ChatwootWebhookAttachment:
+    properties:
+      content_type:
+        type: string
+      data_url:
+        type: string
+      file_type:
+        type: string
+      id:
+        type: integer
+    type: object
+  github_com_EvolutionAPI_evolution-go_pkg_chatwoot_dto.ChatwootWebhookContact:
+    properties:
+      id:
+        type: integer
+      identifier:
+        type: string
+      name:
+        type: string
+      phone_number:
+        type: string
+    type: object
+  github_com_EvolutionAPI_evolution-go_pkg_chatwoot_dto.ChatwootWebhookConversation:
+    properties:
+      id:
+        type: integer
+      meta:
+        $ref: '#/definitions/github_com_EvolutionAPI_evolution-go_pkg_chatwoot_dto.ChatwootWebhookConversationMeta'
+      status:
+        type: string
+    type: object
+  github_com_EvolutionAPI_evolution-go_pkg_chatwoot_dto.ChatwootWebhookConversationMeta:
+    properties:
+      channel:
+        type: string
+      receiver:
+        $ref: '#/definitions/github_com_EvolutionAPI_evolution-go_pkg_chatwoot_dto.ChatwootWebhookContact'
+      sender:
+        $ref: '#/definitions/github_com_EvolutionAPI_evolution-go_pkg_chatwoot_dto.ChatwootWebhookContact'
+    type: object
+  github_com_EvolutionAPI_evolution-go_pkg_chatwoot_dto.ChatwootWebhookPayload:
+    properties:
+      attachments:
+        items:
+          $ref: '#/definitions/github_com_EvolutionAPI_evolution-go_pkg_chatwoot_dto.ChatwootWebhookAttachment'
+        type: array
+      contact:
+        $ref: '#/definitions/github_com_EvolutionAPI_evolution-go_pkg_chatwoot_dto.ChatwootWebhookContact'
+      content:
+        type: string
+      content_type:
+        type: string
+      conversation:
+        $ref: '#/definitions/github_com_EvolutionAPI_evolution-go_pkg_chatwoot_dto.ChatwootWebhookConversation'
+      event:
+        type: string
+      id:
+        type: integer
+      message_type:
+        type: string
+      private:
+        type: boolean
+    type: object
+  github_com_EvolutionAPI_evolution-go_pkg_chatwoot_dto.SetChatwootRequest:
+    properties:
+      accountId:
+        type: string
+      autoCreate:
+        type: boolean
+      conversationPending:
+        type: boolean
+      daysLimitImportMessages:
+        type: integer
+      enabled:
+        type: boolean
+      ignoreJids:
+        items:
+          type: string
+        type: array
+      importContacts:
+        type: boolean
+      importMessages:
+        type: boolean
+      logo:
+        type: string
+      mergeBrazilContacts:
+        type: boolean
+      nameInbox:
+        type: string
+      organization:
+        type: string
+      reopenConversation:
+        type: boolean
+      signDelimiter:
+        type: string
+      signMsg:
+        type: boolean
+      token:
+        type: string
+      url:
+        type: string
+    required:
+    - accountId
+    - token
+    - url
+    type: object
   github_com_EvolutionAPI_evolution-go_pkg_community_service.AddParticipantStruct:
     properties:
       communityJid:
@@ -167,6 +318,8 @@ definitions:
         type: string
       port:
         type: string
+      protocol:
+        type: string
       username:
         type: string
     type: object
@@ -177,6 +330,8 @@ definitions:
       password:
         type: string
       port:
+        type: string
+      protocol:
         type: string
       username:
         type: string
@@ -786,6 +941,13 @@ definitions:
         example: Planos
         type: string
     type: object
+  github_com_EvolutionAPI_evolution-go_pkg_sendMessage_service.StatusTextStruct:
+    properties:
+      id:
+        type: string
+      text:
+        type: string
+    type: object
   github_com_EvolutionAPI_evolution-go_pkg_sendMessage_service.StickerStruct:
     properties:
       delay:
@@ -905,6 +1067,8 @@ definitions:
     properties:
       collectionID:
         type: string
+      uploadOrderIndex:
+        type: integer
     type: object
   go_mau_fi_whatsmeow_proto_waAICommon.AIRegenerateMetadata:
     properties:
@@ -929,6 +1093,8 @@ definitions:
     type: object
   go_mau_fi_whatsmeow_proto_waAICommon.AIThreadInfo_AIThreadClientInfo:
     properties:
+      sourceChatJID:
+        type: string
       type:
         $ref: '#/definitions/go_mau_fi_whatsmeow_proto_waAICommon.AIThreadInfo_AIThreadClientInfo_AIThreadType'
     type: object
@@ -937,12 +1103,14 @@ definitions:
     - 0
     - 1
     - 2
+    - 3
     format: int32
     type: integer
     x-enum-varnames:
     - AIThreadInfo_AIThreadClientInfo_UNKNOWN
     - AIThreadInfo_AIThreadClientInfo_DEFAULT
     - AIThreadInfo_AIThreadClientInfo_INCOGNITO
+    - AIThreadInfo_AIThreadClientInfo_SIDE_CHAT
   go_mau_fi_whatsmeow_proto_waAICommon.AIThreadInfo_AIThreadServerInfo:
     properties:
       title:
@@ -966,6 +1134,16 @@ definitions:
     x-enum-varnames:
     - BotAgeCollectionMetadata_O18_BINARY
     - BotAgeCollectionMetadata_WAFFLE
+  go_mau_fi_whatsmeow_proto_waAICommon.BotAgentDeepLinkMetadata:
+    properties:
+      token:
+        type: string
+    type: object
+  go_mau_fi_whatsmeow_proto_waAICommon.BotAgentMetadata:
+    properties:
+      deepLinkMetadata:
+        $ref: '#/definitions/go_mau_fi_whatsmeow_proto_waAICommon.BotAgentDeepLinkMetadata'
+    type: object
   go_mau_fi_whatsmeow_proto_waAICommon.BotCapabilityMetadata:
     properties:
       capabilities:
@@ -1033,6 +1211,10 @@ definitions:
     - 55
     - 56
     - 57
+    - 58
+    - 59
+    - 60
+    - 61
     format: int32
     type: integer
     x-enum-varnames:
@@ -1094,6 +1276,10 @@ definitions:
     - BotCapabilityMetadata_RICH_RESPONSE_UR_BLOKS_ENABLED
     - BotCapabilityMetadata_RICH_RESPONSE_INLINE_LINKS_ENABLED
     - BotCapabilityMetadata_RICH_RESPONSE_UR_IMAGINE_VIDEO
+    - BotCapabilityMetadata_JSON_PATCH_STREAMING
+    - BotCapabilityMetadata_AI_TAB_FORCE_CLIPPY
+    - BotCapabilityMetadata_UNIFIED_RESPONSE_EMBEDDED_SCREENS
+    - BotCapabilityMetadata_AI_SUBSCRIPTION_ENABLED
   go_mau_fi_whatsmeow_proto_waAICommon.BotDocumentMessageMetadata:
     properties:
       pluginType:
@@ -1537,6 +1723,7 @@ definitions:
     - 46
     - 47
     - 54
+    - 55
     format: int32
     type: integer
     x-enum-varnames:
@@ -1586,6 +1773,7 @@ definitions:
     - BotMetricsEntryPoint_WEB_INTRO_PANEL
     - BotMetricsEntryPoint_WEB_NAVIGATION_BAR
     - BotMetricsEntryPoint_GROUP_MEMBER
+    - BotMetricsEntryPoint_CHATLIST_SEARCH
   go_mau_fi_whatsmeow_proto_waAICommon.BotMetricsMetadata:
     properties:
       destinationEntryPoint:
@@ -2443,6 +2631,8 @@ definitions:
         type: integer
       fullSyncSizeMbLimit:
         type: integer
+      initialSyncMaxMessagesPerChat:
+        type: integer
       inlineInitialPayloadInE2EeMsg:
         type: boolean
       onDemandReady:
@@ -2467,7 +2657,11 @@ definitions:
         type: boolean
       supportGuestChat:
         type: boolean
+      supportHatchHistory:
+        type: boolean
       supportHostedGroupMsg:
+        type: boolean
+      supportManusHistory:
         type: boolean
       supportMessageAssociation:
         type: boolean
@@ -3121,6 +3315,8 @@ definitions:
         type: boolean
       containsAutoReply:
         type: boolean
+      containsCtwaFlowsAutoReply:
+        type: boolean
       ctaPayload:
         type: string
       ctwaClid:
@@ -3563,6 +3759,25 @@ definitions:
       targetMessageKey:
         $ref: '#/definitions/waCommon.MessageKey'
     type: object
+  go_mau_fi_whatsmeow_proto_waE2E.EventInviteMessage:
+    properties:
+      JPEGThumbnail:
+        items:
+          type: integer
+        type: array
+      caption:
+        type: string
+      contextInfo:
+        $ref: '#/definitions/go_mau_fi_whatsmeow_proto_waE2E.ContextInfo'
+      eventID:
+        type: string
+      eventTitle:
+        type: string
+      isCanceled:
+        type: boolean
+      startTime:
+        type: integer
+    type: object
   go_mau_fi_whatsmeow_proto_waE2E.EventMessage:
     properties:
       contextInfo:
@@ -3995,6 +4210,21 @@ definitions:
       securityNotificationEnabled:
         type: boolean
     type: object
+  go_mau_fi_whatsmeow_proto_waE2E.InsightDeliveryState:
+    enum:
+    - 0
+    - 1
+    - 2
+    - 3
+    - 4
+    format: int32
+    type: integer
+    x-enum-varnames:
+    - InsightDeliveryState_SENT
+    - InsightDeliveryState_DELIVERED
+    - InsightDeliveryState_READ
+    - InsightDeliveryState_REPLIED
+    - InsightDeliveryState_QUICK_REPLIED
   go_mau_fi_whatsmeow_proto_waE2E.InteractiveAnnotation:
     properties:
       action:
@@ -4488,6 +4718,8 @@ definitions:
         $ref: '#/definitions/go_mau_fi_whatsmeow_proto_waE2E.FutureProofMessage'
       eventCoverImage:
         $ref: '#/definitions/go_mau_fi_whatsmeow_proto_waE2E.FutureProofMessage'
+      eventInviteMessage:
+        $ref: '#/definitions/go_mau_fi_whatsmeow_proto_waE2E.EventInviteMessage'
       eventMessage:
         $ref: '#/definitions/go_mau_fi_whatsmeow_proto_waE2E.EventMessage'
       extendedTextMessage:
@@ -4780,7 +5012,9 @@ definitions:
         items:
           type: string
         type: array
-      oldestMessageTimestamp:
+      oldestMessageTimestampInBundle:
+        type: integer
+      oldestMessageTimestampInWindow:
         type: integer
     type: object
   go_mau_fi_whatsmeow_proto_waE2E.MessageHistoryNotice:
@@ -4948,11 +5182,22 @@ definitions:
         type: integer
       incentiveEligible:
         type: boolean
+      inviteType:
+        $ref: '#/definitions/go_mau_fi_whatsmeow_proto_waE2E.PaymentInviteMessage_InviteType'
       referralID:
         type: string
       serviceType:
         $ref: '#/definitions/go_mau_fi_whatsmeow_proto_waE2E.PaymentInviteMessage_ServiceType'
     type: object
+  go_mau_fi_whatsmeow_proto_waE2E.PaymentInviteMessage_InviteType:
+    enum:
+    - 0
+    - 1
+    format: int32
+    type: integer
+    x-enum-varnames:
+    - PaymentInviteMessage_DEFAULT
+    - PaymentInviteMessage_MAPPER
   go_mau_fi_whatsmeow_proto_waE2E.PaymentInviteMessage_ServiceType:
     enum:
     - 0
@@ -5001,6 +5246,10 @@ definitions:
     type: object
   go_mau_fi_whatsmeow_proto_waE2E.PeerDataOperationRequestMessage:
     properties:
+      bizBroadcastInsightsContactListRequest:
+        $ref: '#/definitions/go_mau_fi_whatsmeow_proto_waE2E.PeerDataOperationRequestMessage_BizBroadcastInsightsContactListRequest'
+      bizBroadcastInsightsRefreshRequest:
+        $ref: '#/definitions/go_mau_fi_whatsmeow_proto_waE2E.PeerDataOperationRequestMessage_BizBroadcastInsightsRefreshRequest'
       companionCanonicalUserNonceFetchRequest:
         $ref: '#/definitions/go_mau_fi_whatsmeow_proto_waE2E.PeerDataOperationRequestMessage_CompanionCanonicalUserNonceFetchRequest'
       fullHistorySyncOnDemandRequest:
@@ -5027,6 +5276,16 @@ definitions:
         type: array
       syncdCollectionFatalRecoveryRequest:
         $ref: '#/definitions/go_mau_fi_whatsmeow_proto_waE2E.PeerDataOperationRequestMessage_SyncDCollectionFatalRecoveryRequest'
+    type: object
+  go_mau_fi_whatsmeow_proto_waE2E.PeerDataOperationRequestMessage_BizBroadcastInsightsContactListRequest:
+    properties:
+      campaignID:
+        type: string
+    type: object
+  go_mau_fi_whatsmeow_proto_waE2E.PeerDataOperationRequestMessage_BizBroadcastInsightsRefreshRequest:
+    properties:
+      campaignID:
+        type: string
     type: object
   go_mau_fi_whatsmeow_proto_waE2E.PeerDataOperationRequestMessage_CompanionCanonicalUserNonceFetchRequest:
     properties:
@@ -5127,6 +5386,8 @@ definitions:
     type: object
   go_mau_fi_whatsmeow_proto_waE2E.PeerDataOperationRequestResponseMessage_PeerDataOperationResult:
     properties:
+      bizBroadcastInsightsContactListResponse:
+        $ref: '#/definitions/go_mau_fi_whatsmeow_proto_waE2E.PeerDataOperationRequestResponseMessage_PeerDataOperationResult_BizBroadcastInsightsContactListResponse'
       companionCanonicalUserNonceFetchRequestResponse:
         $ref: '#/definitions/go_mau_fi_whatsmeow_proto_waE2E.PeerDataOperationRequestResponseMessage_PeerDataOperationResult_CompanionCanonicalUserNonceFetchResponse'
       companionMetaNonceFetchRequestResponse:
@@ -5149,6 +5410,24 @@ definitions:
         $ref: '#/definitions/go_mau_fi_whatsmeow_proto_waE2E.PeerDataOperationRequestResponseMessage_PeerDataOperationResult_SyncDSnapshotFatalRecoveryResponse'
       waffleNonceFetchRequestResponse:
         $ref: '#/definitions/go_mau_fi_whatsmeow_proto_waE2E.PeerDataOperationRequestResponseMessage_PeerDataOperationResult_WaffleNonceFetchResponse'
+    type: object
+  ? go_mau_fi_whatsmeow_proto_waE2E.PeerDataOperationRequestResponseMessage_PeerDataOperationResult_BizBroadcastInsightsContactListResponse
+  : properties:
+      campaignID:
+        type: string
+      contacts:
+        items:
+          $ref: '#/definitions/go_mau_fi_whatsmeow_proto_waE2E.PeerDataOperationRequestResponseMessage_PeerDataOperationResult_BizBroadcastInsightsContactState'
+        type: array
+      timestampMS:
+        type: integer
+    type: object
+  go_mau_fi_whatsmeow_proto_waE2E.PeerDataOperationRequestResponseMessage_PeerDataOperationResult_BizBroadcastInsightsContactState:
+    properties:
+      contactJID:
+        type: string
+      state:
+        $ref: '#/definitions/go_mau_fi_whatsmeow_proto_waE2E.InsightDeliveryState'
     type: object
   ? go_mau_fi_whatsmeow_proto_waE2E.PeerDataOperationRequestResponseMessage_PeerDataOperationResult_CompanionCanonicalUserNonceFetchResponse
   : properties:
@@ -5339,6 +5618,8 @@ definitions:
     - 9
     - 10
     - 11
+    - 12
+    - 13
     format: int32
     type: integer
     x-enum-varnames:
@@ -5354,6 +5635,8 @@ definitions:
     - PeerDataOperationRequestType_COMPANION_CANONICAL_USER_NONCE_FETCH
     - PeerDataOperationRequestType_HISTORY_SYNC_CHUNK_RETRY
     - PeerDataOperationRequestType_GALAXY_FLOW_ACTION
+    - PeerDataOperationRequestType_BUSINESS_BROADCAST_INSIGHTS_DELIVERED_TO
+    - PeerDataOperationRequestType_BUSINESS_BROADCAST_INSIGHTS_REFRESH
   go_mau_fi_whatsmeow_proto_waE2E.PinInChatMessage:
     properties:
       key:
@@ -5678,6 +5961,7 @@ definitions:
     - 30
     - 31
     - 32
+    - 33
     format: int32
     type: integer
     x-enum-varnames:
@@ -5709,6 +5993,7 @@ definitions:
     - ProtocolMessage_GROUP_MEMBER_LABEL_CHANGE
     - ProtocolMessage_AI_MEDIA_COLLECTION_MESSAGE
     - ProtocolMessage_MESSAGE_UNSCHEDULE
+    - ProtocolMessage_BOT_UNLINK_MESSAGE
   go_mau_fi_whatsmeow_proto_waE2E.QuestionResponseMessage:
     properties:
       key:
@@ -5751,6 +6036,8 @@ definitions:
     type: object
   go_mau_fi_whatsmeow_proto_waE2E.RequestWelcomeMessageMetadata:
     properties:
+      botAgentMetadata:
+        $ref: '#/definitions/go_mau_fi_whatsmeow_proto_waAICommon.BotAgentMetadata'
       localChatState:
         $ref: '#/definitions/go_mau_fi_whatsmeow_proto_waE2E.RequestWelcomeMessageMetadata_LocalChatState'
       welcomeTrigger:
@@ -6129,8 +6416,6 @@ definitions:
     type: object
   go_mau_fi_whatsmeow_proto_waE2E.ThreadID:
     properties:
-      sourceChatJID:
-        type: string
       threadKey:
         $ref: '#/definitions/waCommon.MessageKey'
       threadType:
@@ -6328,6 +6613,8 @@ definitions:
     - 6
     - 7
     - 8
+    - 9
+    - 10
     format: int32
     type: integer
     x-enum-varnames:
@@ -6340,6 +6627,8 @@ definitions:
     - StatusAttribution_RL_ATTRIBUTION
     - StatusAttribution_AI_CREATED
     - StatusAttribution_LAYOUTS
+    - StatusAttribution_NEWSLETTER_STATUS
+    - StatusAttribution_STATUS_CLOSE_SHARING
   go_mau_fi_whatsmeow_proto_waVnameCert.LocalizedName:
     properties:
       lc:
@@ -6843,6 +7132,101 @@ paths:
       summary: Unpin a chat
       tags:
       - Chat
+  /chatwoot/find/{instance}:
+    get:
+      description: Returns the persisted Chatwoot settings for the provided instance.
+      parameters:
+      - description: Instance name
+        in: path
+        name: instance
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_EvolutionAPI_evolution-go_pkg_chatwoot_dto.ChatwootResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/gin.H'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/gin.H'
+      summary: Get Chatwoot configuration for an instance
+      tags:
+      - Chatwoot
+  /chatwoot/set/{instance}:
+    post:
+      consumes:
+      - application/json
+      description: Creates or updates the Chatwoot settings associated with the provided
+        instance.
+      parameters:
+      - description: Instance name
+        in: path
+        name: instance
+        required: true
+        type: string
+      - description: Chatwoot settings
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_EvolutionAPI_evolution-go_pkg_chatwoot_dto.SetChatwootRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_EvolutionAPI_evolution-go_pkg_chatwoot_dto.ChatwootResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/gin.H'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/gin.H'
+      summary: Configure Chatwoot integration for an instance
+      tags:
+      - Chatwoot
+  /chatwoot/webhook/{instance}:
+    post:
+      consumes:
+      - application/json
+      description: Receives Chatwoot webhook events for a mapped instance and forwards
+        supported outgoing messages to WhatsApp.
+      parameters:
+      - description: Instance name
+        in: path
+        name: instance
+        required: true
+        type: string
+      - description: Webhook payload
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_EvolutionAPI_evolution-go_pkg_chatwoot_dto.ChatwootWebhookPayload'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/gin.H'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/gin.H'
+      summary: Receive webhook from Chatwoot
+      tags:
+      - Chatwoot
   /community/add:
     post:
       consumes:
@@ -8466,6 +8850,83 @@ paths:
           schema:
             $ref: '#/definitions/gin.H'
       summary: Send a poll message
+      tags:
+      - Send Message
+  /send/status/media:
+    post:
+      consumes:
+      - application/json
+      - ' multipart/form-data'
+      description: Send an image or video status to status@broadcast. Supports JSON
+        (URL) or multipart/form-data (file upload)
+      parameters:
+      - description: 'Media type: image or video'
+        in: formData
+        name: type
+        required: true
+        type: string
+      - description: Media file (for multipart upload)
+        in: formData
+        name: file
+        type: file
+      - description: Media URL (for JSON upload)
+        in: formData
+        name: url
+        type: string
+      - description: Caption for the media
+        in: formData
+        name: caption
+        type: string
+      - description: Custom message ID
+        in: formData
+        name: id
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: success
+          schema:
+            $ref: '#/definitions/gin.H'
+        "400":
+          description: Error on validation
+          schema:
+            $ref: '#/definitions/gin.H'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/gin.H'
+      summary: Send a WhatsApp media status (image/video)
+      tags:
+      - Send Message
+  /send/status/text:
+    post:
+      consumes:
+      - application/json
+      description: Send a WhatsApp text status to status@broadcast
+      parameters:
+      - description: Status text data
+        in: body
+        name: message
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_EvolutionAPI_evolution-go_pkg_sendMessage_service.StatusTextStruct'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: success
+          schema:
+            $ref: '#/definitions/gin.H'
+        "400":
+          description: Error on validation
+          schema:
+            $ref: '#/definitions/gin.H'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/gin.H'
+      summary: Send a WhatsApp text status
       tags:
       - Send Message
   /send/sticker:

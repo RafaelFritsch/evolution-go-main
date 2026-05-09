@@ -34,6 +34,9 @@ services:
       # Sistema
       OS_NAME: "Linux"
 
+      # Chatwoot (Opcional)
+      # CHATWOOT_ENABLED: "true"
+
       # Conversor de Áudio (Opcional)
       API_AUDIO_CONVERTER: ""
       API_AUDIO_CONVERTER_KEY: ""

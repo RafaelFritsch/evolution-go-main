@@ -31,9 +31,29 @@ func GetService() ChatwootService { return globalService }
 type ChatwootService interface {
 	SetChatwoot(instanceName string, req *chatwoot_dto.SetChatwootRequest) (*chatwoot_model.ChatwootSetting, error)
 	FindChatwoot(instanceName string) (*chatwoot_model.ChatwootSetting, error)
-	SendMessageToConversation(instanceName, phone, name, avatarURL, content, msgType, mediaURL, waMessageID string, isFromMe bool) error
+	SendMessageToConversation(instanceName, phone, name, avatarURL, content, msgType, mediaURL, waMessageID string, isFromMe bool, opts *ForwardMessageOptions) error
 	HandleMessageDeleted(instanceName, waMessageID string) error
 	ImportHistoricalData(instanceName string, setting *chatwoot_model.ChatwootSetting)
+}
+
+type ForwardMessageOptions struct {
+	SenderName string
+	SenderJID  string
+	Private    bool
+}
+
+type chatwootAPI interface {
+	CreateContact(payload chatwoot_client.CreateContactPayload) (*chatwoot_client.Contact, error)
+	FindContact(query string) ([]chatwoot_client.Contact, error)
+	UpdateContact(contactID int64, payload chatwoot_client.CreateContactPayload) (*chatwoot_client.Contact, error)
+	MergeContacts(parentID, childID int64) error
+	GetConversations(contactID, inboxID int64) ([]chatwoot_client.Conversation, error)
+	CreateConversation(payload chatwoot_client.CreateConversationPayload) (*chatwoot_client.Conversation, error)
+	ToggleConversationStatus(conversationID int64, status string) error
+	CreateMessage(conversationID int64, payload chatwoot_client.CreateMessagePayload) (*chatwoot_client.Message, error)
+	DeleteMessage(conversationID, messageID int64) error
+	CreateInbox(name, webhookURL string) (*chatwoot_client.Inbox, error)
+	GetInboxes() ([]chatwoot_client.Inbox, error)
 }
 
 type chatwootService struct {
@@ -42,10 +62,19 @@ type chatwootService struct {
 	loggerWrapper  *logger_wrapper.LoggerManager
 	conversationMu sync.Map
 	clientPointer  map[string]*whatsmeow.Client
+	clientFactory  func(setting *chatwoot_model.ChatwootSetting) chatwootAPI
 }
 
 func NewChatwootService(db *gorm.DB, cfg *config.Config, lw *logger_wrapper.LoggerManager, clientPointer map[string]*whatsmeow.Client) ChatwootService {
-	return &chatwootService{db: db, config: cfg, loggerWrapper: lw, clientPointer: clientPointer}
+	return &chatwootService{
+		db:            db,
+		config:        cfg,
+		loggerWrapper: lw,
+		clientPointer: clientPointer,
+		clientFactory: func(setting *chatwoot_model.ChatwootSetting) chatwootAPI {
+			return chatwoot_client.NewChatwootClient(setting.URL, setting.Token, setting.AccountID)
+		},
+	}
 }
 
 func (s *chatwootService) log(instanceName string) *logger_wrapper.Logger {
@@ -57,8 +86,8 @@ func (s *chatwootService) getMutex(key string) *sync.Mutex {
 	return v.(*sync.Mutex)
 }
 
-func (s *chatwootService) newClient(setting *chatwoot_model.ChatwootSetting) *chatwoot_client.ChatwootClient {
-	return chatwoot_client.NewChatwootClient(setting.URL, setting.Token, setting.AccountID)
+func (s *chatwootService) newClient(setting *chatwoot_model.ChatwootSetting) chatwootAPI {
+	return s.clientFactory(setting)
 }
 
 // --- Task 3.2 ---
@@ -113,7 +142,15 @@ func (s *chatwootService) SetChatwoot(instanceName string, req *chatwoot_dto.Set
 	if req.AutoCreate {
 		go func() {
 			if err := s.autoCreateInboxAndContact(instanceName, &setting); err != nil {
-				s.log(instanceName).LogError("[chatwoot][%s] AutoCreate failed: %v", instanceName, err)
+				s.log(instanceName).LogErrorWithMetadata(
+					fmt.Sprintf("[chatwoot][%s] auto-create inbox failed", instanceName),
+					map[string]interface{}{
+						"instance":   instanceName,
+						"account_id": setting.AccountID,
+						"inbox_name": setting.NameInbox,
+						"error":      err.Error(),
+					},
+				)
 			}
 		}()
 	}
@@ -136,7 +173,7 @@ func (s *chatwootService) FindChatwoot(instanceName string) (*chatwoot_model.Cha
 
 // --- Task 3.4 ---
 
-func (s *chatwootService) getOrCreateContact(client *chatwoot_client.ChatwootClient, setting *chatwoot_model.ChatwootSetting, phone, name, avatarURL, identifier string) (int64, error) {
+func (s *chatwootService) getOrCreateContact(client chatwootAPI, setting *chatwoot_model.ChatwootSetting, phone, name, avatarURL, identifier string) (int64, error) {
 	query := identifier
 	if query == "" {
 		query = phone
@@ -181,7 +218,7 @@ func (s *chatwootService) getOrCreateContact(client *chatwoot_client.ChatwootCli
 
 // --- Task 3.5 ---
 
-func (s *chatwootService) getOrCreateConversation(client *chatwoot_client.ChatwootClient, setting *chatwoot_model.ChatwootSetting, contactID, inboxID int64, instanceName, phone string) (int64, error) {
+func (s *chatwootService) getOrCreateConversation(client chatwootAPI, setting *chatwoot_model.ChatwootSetting, contactID, inboxID int64, instanceName, phone string) (int64, error) {
 	mu := s.getMutex(fmt.Sprintf("%s:%s", instanceName, phone))
 	mu.Lock()
 	defer mu.Unlock()
@@ -257,7 +294,15 @@ func (s *chatwootService) autoCreateInboxAndContact(instanceName string, setting
 			return fmt.Errorf("create inbox: %w", err)
 		}
 		inboxID = inbox.ID
-		s.log(instanceName).LogInfo("[chatwoot][%s] Inbox created: id=%d", instanceName, inboxID)
+		s.log(instanceName).LogInfoWithMetadata(
+			fmt.Sprintf("[chatwoot][%s] inbox created", instanceName),
+			map[string]interface{}{
+				"instance":   instanceName,
+				"inbox_id":   inboxID,
+				"inbox_name": setting.NameInbox,
+				"webhook":    webhookURL,
+			},
+		)
 	}
 
 	if err := s.db.Model(setting).Update("inbox_id", inboxID).Error; err != nil {
@@ -265,13 +310,21 @@ func (s *chatwootService) autoCreateInboxAndContact(instanceName string, setting
 	}
 	setting.InboxID = inboxID
 
-	s.log(instanceName).LogInfo("[chatwoot][%s] AutoCreate done. inbox_id=%d webhook=%s", instanceName, inboxID, webhookURL)
+	s.log(instanceName).LogInfoWithMetadata(
+		fmt.Sprintf("[chatwoot][%s] auto-create inbox completed", instanceName),
+		map[string]interface{}{
+			"instance":   instanceName,
+			"inbox_id":   inboxID,
+			"inbox_name": setting.NameInbox,
+			"webhook":    webhookURL,
+		},
+	)
 	return nil
 }
 
 // --- Task 3.7 ---
 
-func (s *chatwootService) resolveInboxID(client *chatwoot_client.ChatwootClient, setting *chatwoot_model.ChatwootSetting, instanceName string) (int64, error) {
+func (s *chatwootService) resolveInboxID(client chatwootAPI, setting *chatwoot_model.ChatwootSetting, instanceName string) (int64, error) {
 	if setting.InboxID != 0 {
 		return setting.InboxID, nil
 	}
@@ -305,12 +358,15 @@ func (s *chatwootService) isIgnored(setting *chatwoot_model.ChatwootSetting, jid
 	return false
 }
 
-func (s *chatwootService) SendMessageToConversation(instanceName, phone, name, avatarURL, content, msgType, mediaURL, waMessageID string, isFromMe bool) error {
+func (s *chatwootService) SendMessageToConversation(instanceName, phone, name, avatarURL, content, msgType, mediaURL, waMessageID string, isFromMe bool, opts *ForwardMessageOptions) error {
 	setting, err := s.FindChatwoot(instanceName)
 	if err != nil || !setting.Enabled {
 		return nil
 	}
 	if s.isIgnored(setting, phone) {
+		return nil
+	}
+	if opts != nil && opts.SenderJID != "" && s.isIgnored(setting, opts.SenderJID) {
 		return nil
 	}
 
@@ -319,7 +375,14 @@ func (s *chatwootService) SendMessageToConversation(instanceName, phone, name, a
 
 	inboxID, err := s.resolveInboxID(client, setting, instanceName)
 	if err != nil {
-		s.log(instanceName).LogError("[chatwoot][%s] %v", instanceName, err)
+		s.log(instanceName).LogErrorWithMetadata(
+			fmt.Sprintf("[chatwoot][%s] resolve inbox failed", instanceName),
+			map[string]interface{}{
+				"instance": instanceName,
+				"phone":    phone,
+				"error":    err.Error(),
+			},
+		)
 		return err
 	}
 
@@ -336,13 +399,29 @@ func (s *chatwootService) SendMessageToConversation(instanceName, phone, name, a
 
 	contactID, err := s.getOrCreateContact(client, setting, contactPhone, name, avatarURL, identifier)
 	if err != nil {
-		s.log(instanceName).LogError("[chatwoot][%s] contact error: %v", instanceName, err)
+		s.log(instanceName).LogErrorWithMetadata(
+			fmt.Sprintf("[chatwoot][%s] contact lookup/create failed", instanceName),
+			map[string]interface{}{
+				"instance":   instanceName,
+				"phone":      phone,
+				"identifier": identifier,
+				"error":      err.Error(),
+			},
+		)
 		return err
 	}
 
 	conversationID, err := s.getOrCreateConversation(client, setting, contactID, inboxID, instanceName, phone)
 	if err != nil {
-		s.log(instanceName).LogError("[chatwoot][%s] conversation error: %v", instanceName, err)
+		s.log(instanceName).LogErrorWithMetadata(
+			fmt.Sprintf("[chatwoot][%s] conversation lookup/create failed", instanceName),
+			map[string]interface{}{
+				"instance": instanceName,
+				"phone":    phone,
+				"inbox_id": inboxID,
+				"error":    err.Error(),
+			},
+		)
 		return err
 	}
 
@@ -351,18 +430,30 @@ func (s *chatwootService) SendMessageToConversation(instanceName, phone, name, a
 		chatwootMsgType = "outgoing"
 	}
 
-	msgContent := content
-	switch {
-	case isGroup && !isFromMe && name != "":
-		msgContent = fmt.Sprintf("*%s:* %s", name, content)
-	case setting.SignMsg && !isFromMe && name != "":
-		msgContent = fmt.Sprintf("%s%s%s", name, setting.SignDelimiter, content)
+	msgContent := strings.TrimSpace(content)
+	if msgContent == "" {
+		msgContent = defaultContentForMessageType(msgType)
 	}
+
+	senderName := ""
+	isPrivate := false
+	if opts != nil {
+		senderName = strings.TrimSpace(opts.SenderName)
+		isPrivate = opts.Private
+	}
+
+	switch {
+	case isGroup && !isFromMe && senderName != "":
+		msgContent = fmt.Sprintf("*%s:* %s", senderName, msgContent)
+	case setting.SignMsg && !isFromMe && name != "":
+		msgContent = fmt.Sprintf("%s%s%s", name, setting.SignDelimiter, msgContent)
+	}
+	msgContent = FormatWhatsAppToMarkdown(msgContent)
 
 	payload := chatwoot_client.CreateMessagePayload{
 		Content:     msgContent,
 		MessageType: chatwootMsgType,
-		Private:     false,
+		Private:     isPrivate,
 		ContentType: "text",
 	}
 	if mediaURL != "" {
@@ -373,7 +464,16 @@ func (s *chatwootService) SendMessageToConversation(instanceName, phone, name, a
 
 	msg, err := client.CreateMessage(conversationID, payload)
 	if err != nil {
-		s.log(instanceName).LogError("[chatwoot][%s] create message error: %v", instanceName, err)
+		s.log(instanceName).LogErrorWithMetadata(
+			fmt.Sprintf("[chatwoot][%s] create message failed", instanceName),
+			map[string]interface{}{
+				"instance":        instanceName,
+				"conversation_id": conversationID,
+				"wa_message_id":   waMessageID,
+				"message_type":    chatwootMsgType,
+				"error":           err.Error(),
+			},
+		)
 		return err
 	}
 
@@ -388,8 +488,42 @@ func (s *chatwootService) SendMessageToConversation(instanceName, phone, name, a
 		s.db.Save(&mapping) //nolint:errcheck
 	}
 
-	s.log(instanceName).LogInfo("[chatwoot][%s] message forwarded conv=%d msg=%d type=%s", instanceName, conversationID, msg.ID, chatwootMsgType)
+	s.log(instanceName).LogInfoWithMetadata(
+		fmt.Sprintf("[chatwoot][%s] message forwarded", instanceName),
+		map[string]interface{}{
+			"instance":        instanceName,
+			"conversation_id": conversationID,
+			"chatwoot_msg_id": msg.ID,
+			"wa_message_id":   waMessageID,
+			"message_type":    chatwootMsgType,
+			"is_group":        isGroup,
+			"private":         isPrivate,
+		},
+	)
 	return nil
+}
+
+func defaultContentForMessageType(msgType string) string {
+	switch {
+	case strings.HasPrefix(msgType, "image"):
+		return "[imagem]"
+	case strings.HasPrefix(msgType, "video"), strings.HasPrefix(msgType, "round video"):
+		return "[video]"
+	case strings.HasPrefix(msgType, "audio"):
+		return "[audio]"
+	case strings.HasPrefix(msgType, "document"):
+		return "[documento]"
+	case strings.HasPrefix(msgType, "sticker"):
+		return "[figurinha]"
+	case strings.HasPrefix(msgType, "location"), strings.HasPrefix(msgType, "live location"):
+		return "[localizacao]"
+	case strings.HasPrefix(msgType, "contact"):
+		return "[contato]"
+	case strings.HasPrefix(msgType, "poll"):
+		return "[enquete]"
+	default:
+		return ""
+	}
 }
 
 // --- Task 3.8 ---
@@ -424,12 +558,28 @@ func (s *chatwootService) HandleMessageDeleted(instanceName, waMessageID string)
 
 	client := s.newClient(setting)
 	if err := client.DeleteMessage(mapping.ConversationID, mapping.ChatwootMessageID); err != nil {
-		s.log(instanceName).LogError("[chatwoot][%s] delete message error: %v", instanceName, err)
+		s.log(instanceName).LogErrorWithMetadata(
+			fmt.Sprintf("[chatwoot][%s] delete mapped message failed", instanceName),
+			map[string]interface{}{
+				"instance":            instanceName,
+				"conversation_id":     mapping.ConversationID,
+				"chatwoot_message_id": mapping.ChatwootMessageID,
+				"wa_message_id":       waMessageID,
+				"error":               err.Error(),
+			},
+		)
 		return err
 	}
 
 	s.db.Delete(&mapping) //nolint:errcheck
-	s.log(instanceName).LogInfo("[chatwoot][%s] deleted chatwoot message %d", instanceName, mapping.ChatwootMessageID)
+	s.log(instanceName).LogInfoWithMetadata(
+		fmt.Sprintf("[chatwoot][%s] deleted mapped chatwoot message", instanceName),
+		map[string]interface{}{
+			"instance":            instanceName,
+			"conversation_id":     mapping.ConversationID,
+			"chatwoot_message_id": mapping.ChatwootMessageID,
+			"wa_message_id":       waMessageID,
+		},
+	)
 	return nil
 }
-

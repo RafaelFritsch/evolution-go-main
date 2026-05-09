@@ -92,26 +92,46 @@ func newLogger(instanceId string, config *config.Config) *Logger {
 }
 
 func (l *Logger) LogInfo(format string, args ...interface{}) {
-	l.log("INFO", format, args...)
+	l.log("INFO", fmt.Sprintf(format, args...), nil)
 	logger.LogInfo(format, args...)
 }
 
 func (l *Logger) LogError(format string, args ...interface{}) {
-	l.log("ERROR", format, args...)
+	l.log("ERROR", fmt.Sprintf(format, args...), nil)
 	logger.LogError(format, args...)
 }
 
 func (l *Logger) LogWarn(format string, args ...interface{}) {
-	l.log("WARN", format, args...)
+	l.log("WARN", fmt.Sprintf(format, args...), nil)
 	logger.LogWarn(format, args...)
 }
 
 func (l *Logger) LogDebug(format string, args ...interface{}) {
-	l.log("DEBUG", format, args...)
+	l.log("DEBUG", fmt.Sprintf(format, args...), nil)
 	logger.LogDebug(format, args...)
 }
 
-func (l *Logger) log(level string, format string, args ...interface{}) {
+func (l *Logger) LogInfoWithMetadata(message string, metadata interface{}) {
+	l.log("INFO", message, metadata)
+	logger.LogInfo("%s", message)
+}
+
+func (l *Logger) LogErrorWithMetadata(message string, metadata interface{}) {
+	l.log("ERROR", message, metadata)
+	logger.LogError("%s", message)
+}
+
+func (l *Logger) LogWarnWithMetadata(message string, metadata interface{}) {
+	l.log("WARN", message, metadata)
+	logger.LogWarn("%s", message)
+}
+
+func (l *Logger) LogDebugWithMetadata(message string, metadata interface{}) {
+	l.log("DEBUG", message, metadata)
+	logger.LogDebug("%s", message)
+}
+
+func (l *Logger) log(level string, message string, metadata interface{}) {
 	l.mu.Lock()
 	defer l.mu.Unlock()
 
@@ -119,7 +139,16 @@ func (l *Logger) log(level string, format string, args ...interface{}) {
 		Timestamp:  time.Now(),
 		Level:      level,
 		InstanceId: l.instanceId,
-		Message:    fmt.Sprintf(format, args...),
+		Message:    message,
+	}
+
+	if metadata != nil {
+		rawMetadata, err := json.Marshal(metadata)
+		if err != nil {
+			logger.LogError("Failed to marshal log metadata: %v", err)
+		} else {
+			entry.Metadata = rawMetadata
+		}
 	}
 
 	jsonEntry, err := json.Marshal(entry)

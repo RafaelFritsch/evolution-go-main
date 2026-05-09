@@ -54,6 +54,53 @@ func ExtractMessageContent(msg *waE2E.Message) (text string, mediaType string) {
 	return "", ""
 }
 
+// ExtractAudioTranscript returns transcription text for audio messages when the
+// upstream event payload already contains it. The project currently does not
+// generate transcripts itself, so this is a best-effort extractor.
+func ExtractAudioTranscript(data map[string]interface{}, msg *waE2E.Message) string {
+	if msg == nil || msg.GetAudioMessage() == nil || data == nil {
+		return ""
+	}
+
+	if transcript := firstNonEmptyString(
+		data["audioTranscription"],
+		data["audioTranscript"],
+		data["transcription"],
+		data["transcript"],
+	); transcript != "" {
+		return transcript
+	}
+
+	messageMap, ok := data["Message"].(map[string]interface{})
+	if !ok {
+		return ""
+	}
+
+	if transcript := firstNonEmptyString(
+		messageMap["audioTranscription"],
+		messageMap["audioTranscript"],
+		messageMap["transcription"],
+		messageMap["transcript"],
+		messageMap["text"],
+	); transcript != "" {
+		return transcript
+	}
+
+	audioMap, ok := messageMap["audioMessage"].(map[string]interface{})
+	if !ok {
+		return ""
+	}
+
+	return firstNonEmptyString(
+		audioMap["audioTranscription"],
+		audioMap["audioTranscript"],
+		audioMap["transcription"],
+		audioMap["transcript"],
+		audioMap["text"],
+		audioMap["caption"],
+	)
+}
+
 func formatLocation(lat, lon float64) string {
 	var sb strings.Builder
 	sb.WriteString("Location: ")
@@ -74,6 +121,18 @@ func appendFloat(sb *strings.Builder, f float64) {
 	writeInt64(sb, intPart)
 	sb.WriteByte('.')
 	writeInt64Padded(sb, frac, 6)
+}
+
+func firstNonEmptyString(values ...interface{}) string {
+	for _, value := range values {
+		if str, ok := value.(string); ok {
+			str = strings.TrimSpace(str)
+			if str != "" {
+				return str
+			}
+		}
+	}
+	return ""
 }
 
 func writeInt64(sb *strings.Builder, n int64) {

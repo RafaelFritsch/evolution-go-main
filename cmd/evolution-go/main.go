@@ -9,8 +9,8 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
-	"strings"
 	"path/filepath"
+	"strings"
 	"syscall"
 	"time"
 
@@ -21,14 +21,14 @@ import (
 	"gorm.io/gorm"
 	_ "modernc.org/sqlite"
 
-	chatwoot_controller "github.com/EvolutionAPI/evolution-go/pkg/chatwoot/controller"
-	chatwoot_model "github.com/EvolutionAPI/evolution-go/pkg/chatwoot/model"
-	chatwoot_router "github.com/EvolutionAPI/evolution-go/pkg/chatwoot/router"
-	chatwoot_service "github.com/EvolutionAPI/evolution-go/pkg/chatwoot/service"
 	call_handler "github.com/EvolutionAPI/evolution-go/pkg/call/handler"
 	call_service "github.com/EvolutionAPI/evolution-go/pkg/call/service"
 	chat_handler "github.com/EvolutionAPI/evolution-go/pkg/chat/handler"
 	chat_service "github.com/EvolutionAPI/evolution-go/pkg/chat/service"
+	chatwoot_controller "github.com/EvolutionAPI/evolution-go/pkg/chatwoot/controller"
+	chatwoot_model "github.com/EvolutionAPI/evolution-go/pkg/chatwoot/model"
+	chatwoot_router "github.com/EvolutionAPI/evolution-go/pkg/chatwoot/router"
+	chatwoot_service "github.com/EvolutionAPI/evolution-go/pkg/chatwoot/service"
 	community_handler "github.com/EvolutionAPI/evolution-go/pkg/community/handler"
 	community_service "github.com/EvolutionAPI/evolution-go/pkg/community/service"
 	config "github.com/EvolutionAPI/evolution-go/pkg/config"
@@ -243,7 +243,7 @@ func setupRouter(db *gorm.DB, authDB *sql.DB, sqliteDB *sql.DB, config *config.C
 	// Chatwoot integration
 	chatwootSvc := chatwoot_service.NewChatwootService(db, config, loggerWrapper, clientPointer)
 	chatwoot_service.Register(chatwootSvc)
-	chatwootCtrl := chatwoot_controller.NewController(chatwootSvc, sendMessageService, instanceRepository)
+	chatwootCtrl := chatwoot_controller.NewController(chatwootSvc, sendMessageService, instanceRepository, loggerWrapper)
 	chatwoot_router.RegisterRoutes(r, chatwootCtrl, auth_middleware.NewMiddleware(config, instanceService).AuthAdmin)
 
 	if config.ConnectOnStartup {

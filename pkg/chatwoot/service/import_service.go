@@ -22,17 +22,31 @@ func (s *chatwootService) ImportHistoricalData(instanceName string, setting *cha
 	}
 
 	now := time.Now()
-	s.db.Model(setting).Update("importing_at", &now) //nolint:errcheck
+	s.db.Model(setting).Update("importing_at", &now)      //nolint:errcheck
 	defer s.db.Model(setting).Update("importing_at", nil) //nolint:errcheck
 
-	s.log(instanceName).LogInfo("[chatwoot][%s] starting historical import (contacts=%v messages=%v)",
-		instanceName, setting.ImportContacts, setting.ImportMessages)
+	s.log(instanceName).LogInfoWithMetadata(
+		fmt.Sprintf("[chatwoot][%s] starting historical import", instanceName),
+		map[string]interface{}{
+			"instance":         instanceName,
+			"import_contacts":  setting.ImportContacts,
+			"import_messages":  setting.ImportMessages,
+			"days_limit":       setting.DaysLimitImportMessages,
+			"configured_inbox": setting.NameInbox,
+		},
+	)
 
 	client := s.newClient(setting)
 
 	inboxID, err := s.resolveInboxID(client, setting, instanceName)
 	if err != nil {
-		s.log(instanceName).LogError("[chatwoot][%s] resolve inbox failed: %v", instanceName, err)
+		s.log(instanceName).LogErrorWithMetadata(
+			fmt.Sprintf("[chatwoot][%s] resolve inbox failed during historical import", instanceName),
+			map[string]interface{}{
+				"instance": instanceName,
+				"error":    err.Error(),
+			},
+		)
 		return
 	}
 
@@ -44,7 +58,14 @@ func (s *chatwootService) ImportHistoricalData(instanceName string, setting *cha
 		} else {
 			n, err := s.importContacts(client, setting, waClient)
 			if err != nil {
-				s.log(instanceName).LogError("[chatwoot][%s] contact import error: %v", instanceName, err)
+				s.log(instanceName).LogErrorWithMetadata(
+					fmt.Sprintf("[chatwoot][%s] contact import failed", instanceName),
+					map[string]interface{}{
+						"instance": instanceName,
+						"inbox_id": inboxID,
+						"error":    err.Error(),
+					},
+				)
 			} else {
 				contactsImported = n
 			}
@@ -55,20 +76,36 @@ func (s *chatwootService) ImportHistoricalData(instanceName string, setting *cha
 	if setting.ImportMessages {
 		n, err := s.importMessages(client, setting, inboxID)
 		if err != nil {
-			s.log(instanceName).LogError("[chatwoot][%s] message import error: %v", instanceName, err)
+			s.log(instanceName).LogErrorWithMetadata(
+				fmt.Sprintf("[chatwoot][%s] message import failed", instanceName),
+				map[string]interface{}{
+					"instance": instanceName,
+					"inbox_id": inboxID,
+					"error":    err.Error(),
+				},
+			)
 		} else {
 			conversationsImported = n
 		}
 	}
 
-	s.log(instanceName).LogInfo("[chatwoot][%s] historical import finished: %d contacts, %d conversations",
-		instanceName, contactsImported, conversationsImported)
+	s.log(instanceName).LogInfoWithMetadata(
+		fmt.Sprintf("[chatwoot][%s] historical import finished", instanceName),
+		map[string]interface{}{
+			"instance":                instanceName,
+			"contacts_imported":       contactsImported,
+			"conversations_imported":  conversationsImported,
+			"messages_import_enabled": setting.ImportMessages,
+			"contacts_import_enabled": setting.ImportContacts,
+			"days_limit":              setting.DaysLimitImportMessages,
+		},
+	)
 }
 
 // importContacts reads all contacts from the whatsmeow store and creates them in Chatwoot.
 // Processed in batches of 100 with 100ms sleep between batches to avoid rate-limiting.
 func (s *chatwootService) importContacts(
-	client *chatwoot_client.ChatwootClient,
+	client chatwootAPI,
 	setting *chatwoot_model.ChatwootSetting,
 	waClient *whatsmeow.Client,
 ) (int, error) {
@@ -113,8 +150,14 @@ func (s *chatwootService) importContacts(
 		for _, e := range entries[i:end] {
 			phone := strings.TrimSuffix(e.jid, "@s.whatsapp.net")
 			if _, err := s.getOrCreateContact(client, setting, phone, e.name, "", e.jid); err != nil {
-				s.log(setting.InstanceID).LogError("[chatwoot][%s] import contact jid=%s: %v",
-					setting.InstanceID, e.jid, err)
+				s.log(setting.InstanceID).LogErrorWithMetadata(
+					fmt.Sprintf("[chatwoot][%s] import contact failed", setting.InstanceID),
+					map[string]interface{}{
+						"instance": setting.InstanceID,
+						"jid":      e.jid,
+						"error":    err.Error(),
+					},
+				)
 				continue
 			}
 			imported++
@@ -132,7 +175,7 @@ func (s *chatwootService) importContacts(
 // that has a local message within the DaysLimitImportMessages window.
 // Message content is not stored in the local DB — a private summary note is posted instead.
 func (s *chatwootService) importMessages(
-	client *chatwoot_client.ChatwootClient,
+	client chatwootAPI,
 	setting *chatwoot_model.ChatwootSetting,
 	inboxID int64,
 ) (int, error) {
@@ -168,15 +211,28 @@ func (s *chatwootService) importMessages(
 	for phone, count := range phoneCounts {
 		contactID, err := s.getOrCreateContact(client, setting, phone, phone, "", "")
 		if err != nil {
-			s.log(setting.InstanceID).LogError("[chatwoot][%s] import messages contact phone=%s: %v",
-				setting.InstanceID, phone, err)
+			s.log(setting.InstanceID).LogErrorWithMetadata(
+				fmt.Sprintf("[chatwoot][%s] import messages contact step failed", setting.InstanceID),
+				map[string]interface{}{
+					"instance": setting.InstanceID,
+					"phone":    phone,
+					"error":    err.Error(),
+				},
+			)
 			continue
 		}
 
 		convID, err := s.getOrCreateConversation(client, setting, contactID, inboxID, setting.InstanceID, phone)
 		if err != nil {
-			s.log(setting.InstanceID).LogError("[chatwoot][%s] import messages conversation phone=%s: %v",
-				setting.InstanceID, phone, err)
+			s.log(setting.InstanceID).LogErrorWithMetadata(
+				fmt.Sprintf("[chatwoot][%s] import messages conversation step failed", setting.InstanceID),
+				map[string]interface{}{
+					"instance": setting.InstanceID,
+					"phone":    phone,
+					"inbox_id": inboxID,
+					"error":    err.Error(),
+				},
+			)
 			continue
 		}
 

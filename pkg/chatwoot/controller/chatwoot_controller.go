@@ -1,7 +1,7 @@
 package chatwoot_controller
 
 import (
-	"log"
+	"encoding/json"
 	"net/http"
 	"strings"
 
@@ -10,6 +10,7 @@ import (
 	chatwoot_dto "github.com/EvolutionAPI/evolution-go/pkg/chatwoot/dto"
 	chatwoot_service "github.com/EvolutionAPI/evolution-go/pkg/chatwoot/service"
 	instance_repository "github.com/EvolutionAPI/evolution-go/pkg/instance/repository"
+	logger_wrapper "github.com/EvolutionAPI/evolution-go/pkg/logger"
 	send_service "github.com/EvolutionAPI/evolution-go/pkg/sendMessage/service"
 )
 
@@ -17,22 +18,30 @@ type ChatwootController struct {
 	chatwootService    chatwoot_service.ChatwootService
 	sendService        send_service.SendService
 	instanceRepository instance_repository.InstanceRepository
+	loggerManager      *logger_wrapper.LoggerManager
 }
 
 func NewController(
 	svc chatwoot_service.ChatwootService,
 	sendSvc send_service.SendService,
 	instanceRepo instance_repository.InstanceRepository,
+	loggerManager *logger_wrapper.LoggerManager,
 ) *ChatwootController {
 	return &ChatwootController{
 		chatwootService:    svc,
 		sendService:        sendSvc,
 		instanceRepository: instanceRepo,
+		loggerManager:      loggerManager,
 	}
+}
+
+func (ctrl *ChatwootController) log(instanceName string) *logger_wrapper.Logger {
+	return ctrl.loggerManager.GetLogger(instanceName)
 }
 
 // SetChatwoot godoc
 // @Summary      Configure Chatwoot integration for an instance
+// @Description  Creates or updates the Chatwoot settings associated with the provided instance.
 // @Tags         Chatwoot
 // @Accept       json
 // @Produce      json
@@ -58,22 +67,27 @@ func (ctrl *ChatwootController) SetChatwoot(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{
+		"id":         setting.ID,
 		"instanceId": setting.InstanceID,
 		"enabled":    setting.Enabled,
 		"accountId":  setting.AccountID,
+		"token":      setting.Token,
 		"url":        setting.URL,
 		"nameInbox":  setting.NameInbox,
 		"inboxId":    setting.InboxID,
+		"ignoreJids": parseIgnoreJIDs(setting.IgnoreJids),
 	})
 }
 
 // FindChatwoot godoc
 // @Summary      Get Chatwoot configuration for an instance
+// @Description  Returns the persisted Chatwoot settings for the provided instance.
 // @Tags         Chatwoot
 // @Produce      json
 // @Param        instance  path      string  true  "Instance name"
 // @Success      200       {object}  chatwoot_dto.ChatwootResponse
 // @Failure      404       {object}  gin.H
+// @Failure      500       {object}  gin.H
 // @Router       /chatwoot/find/{instance} [get]
 func (ctrl *ChatwootController) FindChatwoot(c *gin.Context) {
 	instanceName := c.Param("instance")
@@ -85,9 +99,11 @@ func (ctrl *ChatwootController) FindChatwoot(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{
+		"id":                      setting.ID,
 		"instanceId":              setting.InstanceID,
 		"enabled":                 setting.Enabled,
 		"accountId":               setting.AccountID,
+		"token":                   setting.Token,
 		"url":                     setting.URL,
 		"signMsg":                 setting.SignMsg,
 		"signDelimiter":           setting.SignDelimiter,
@@ -102,24 +118,34 @@ func (ctrl *ChatwootController) FindChatwoot(c *gin.Context) {
 		"autoCreate":              setting.AutoCreate,
 		"organization":            setting.Organization,
 		"logo":                    setting.Logo,
+		"ignoreJids":              parseIgnoreJIDs(setting.IgnoreJids),
 	})
 }
 
 // ReceiveWebhook handles incoming Chatwoot webhook events and dispatches them to WhatsApp.
 //
 // @Summary      Receive webhook from Chatwoot
+// @Description  Receives Chatwoot webhook events for a mapped instance and forwards supported outgoing messages to WhatsApp.
 // @Tags         Chatwoot
 // @Accept       json
 // @Produce      json
 // @Param        instance  path      string                               true  "Instance name"
 // @Param        body      body      chatwoot_dto.ChatwootWebhookPayload  true  "Webhook payload"
 // @Success      200       {object}  gin.H
+// @Failure      400       {object}  gin.H
 // @Router       /chatwoot/webhook/{instance} [post]
 func (ctrl *ChatwootController) ReceiveWebhook(c *gin.Context) {
 	instanceName := c.Param("instance")
 
 	var payload chatwoot_dto.ChatwootWebhookPayload
 	if err := c.ShouldBindJSON(&payload); err != nil {
+		ctrl.log(instanceName).LogWarnWithMetadata(
+			"[chatwoot] webhook ignored due to invalid payload",
+			map[string]interface{}{
+				"instance": instanceName,
+				"error":    err.Error(),
+			},
+		)
 		c.JSON(http.StatusOK, gin.H{"status": "ignored"})
 		return
 	}
@@ -127,6 +153,17 @@ func (ctrl *ChatwootController) ReceiveWebhook(c *gin.Context) {
 	// Task 7.1: route by event type
 	switch payload.Event {
 	case "message_created":
+		ctrl.log(instanceName).LogInfoWithMetadata(
+			"[chatwoot] webhook received",
+			map[string]interface{}{
+				"instance":        instanceName,
+				"event":           payload.Event,
+				"message_type":    payload.MessageType,
+				"private":         payload.Private,
+				"conversation_id": payload.Conversation.ID,
+				"attachments":     len(payload.Attachments),
+			},
+		)
 		// Only outgoing, non-private agent messages are forwarded to WhatsApp.
 		if payload.MessageType != "outgoing" || payload.Private {
 			c.JSON(http.StatusOK, gin.H{"status": "ignored"})
@@ -143,9 +180,15 @@ func (ctrl *ChatwootController) ReceiveWebhook(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"status": "queued"})
 
 	case "conversation_status_changed":
-		// Task 7.1: log status changes for observability; no further action needed.
-		log.Printf("[chatwoot][%s] conversation %d status → %s",
-			instanceName, payload.Conversation.ID, payload.Conversation.Status)
+		ctrl.log(instanceName).LogInfoWithMetadata(
+			"[chatwoot] conversation status changed",
+			map[string]interface{}{
+				"instance":            instanceName,
+				"event":               payload.Event,
+				"conversation_id":     payload.Conversation.ID,
+				"conversation_status": payload.Conversation.Status,
+			},
+		)
 		c.JSON(http.StatusOK, gin.H{"status": "ok"})
 
 	default:
@@ -158,12 +201,29 @@ func (ctrl *ChatwootController) dispatchToWhatsApp(instanceName string, payload 
 	// Task 7.2: extract phone number
 	phone := payload.Conversation.Meta.Sender.PhoneNumber
 	if phone == "" {
+		ctrl.log(instanceName).LogWarnWithMetadata(
+			"[chatwoot] webhook message ignored because sender phone is empty",
+			map[string]interface{}{
+				"instance":        instanceName,
+				"conversation_id": payload.Conversation.ID,
+				"event":           payload.Event,
+			},
+		)
 		return
 	}
 	phone = strings.TrimPrefix(phone, "+")
 
 	instance, err := ctrl.instanceRepository.GetInstanceByName(instanceName)
 	if err != nil || !instance.Connected {
+		ctrl.log(instanceName).LogWarnWithMetadata(
+			"[chatwoot] webhook message ignored because instance is unavailable",
+			map[string]interface{}{
+				"instance":        instanceName,
+				"conversation_id": payload.Conversation.ID,
+				"phone":           phone,
+				"connected":       err == nil && instance.Connected,
+			},
+		)
 		return
 	}
 
@@ -177,6 +237,15 @@ func (ctrl *ChatwootController) dispatchToWhatsApp(instanceName string, payload 
 			Type:    mediaType,
 			Caption: payload.Content,
 		}, instance)
+		ctrl.log(instanceName).LogInfoWithMetadata(
+			"[chatwoot] webhook media dispatched to whatsapp",
+			map[string]interface{}{
+				"instance":        instanceName,
+				"conversation_id": payload.Conversation.ID,
+				"phone":           phone,
+				"media_type":      mediaType,
+			},
+		)
 		return
 	}
 
@@ -186,6 +255,14 @@ func (ctrl *ChatwootController) dispatchToWhatsApp(instanceName string, payload 
 			Number: phone,
 			Text:   payload.Content,
 		}, instance)
+		ctrl.log(instanceName).LogInfoWithMetadata(
+			"[chatwoot] webhook text dispatched to whatsapp",
+			map[string]interface{}{
+				"instance":        instanceName,
+				"conversation_id": payload.Conversation.ID,
+				"phone":           phone,
+			},
+		)
 	}
 }
 
@@ -194,13 +271,26 @@ func (ctrl *ChatwootController) dispatchToWhatsApp(instanceName string, payload 
 func (ctrl *ChatwootController) handleInboxWhatsappCommand(instanceName string, payload chatwoot_dto.ChatwootWebhookPayload) {
 	targetInstance := strings.TrimSpace(strings.TrimPrefix(payload.Content, "#inbox_whatsapp:"))
 	if targetInstance == "" {
-		log.Printf("[chatwoot][%s] #inbox_whatsapp: command missing target instance name", instanceName)
+		ctrl.log(instanceName).LogWarnWithMetadata(
+			"[chatwoot] inbox_whatsapp command missing target instance",
+			map[string]interface{}{
+				"instance": instanceName,
+				"content":  payload.Content,
+			},
+		)
 		return
 	}
 
 	currentSetting, err := ctrl.chatwootService.FindChatwoot(instanceName)
 	if err != nil {
-		log.Printf("[chatwoot][%s] #inbox_whatsapp: could not load current config: %v", instanceName, err)
+		ctrl.log(instanceName).LogErrorWithMetadata(
+			"[chatwoot] inbox_whatsapp command failed to load current config",
+			map[string]interface{}{
+				"instance":        instanceName,
+				"target_instance": targetInstance,
+				"error":           err.Error(),
+			},
+		)
 		return
 	}
 
@@ -213,12 +303,24 @@ func (ctrl *ChatwootController) handleInboxWhatsappCommand(instanceName string, 
 		AutoCreate: true,
 	})
 	if err != nil {
-		log.Printf("[chatwoot][%s] #inbox_whatsapp: failed to configure instance %q: %v",
-			instanceName, targetInstance, err)
+		ctrl.log(instanceName).LogErrorWithMetadata(
+			"[chatwoot] inbox_whatsapp command failed to configure target instance",
+			map[string]interface{}{
+				"instance":        instanceName,
+				"target_instance": targetInstance,
+				"error":           err.Error(),
+			},
+		)
 		return
 	}
 
-	log.Printf("[chatwoot][%s] #inbox_whatsapp: inbox created for instance %q", instanceName, targetInstance)
+	ctrl.log(instanceName).LogInfoWithMetadata(
+		"[chatwoot] inbox_whatsapp command configured target instance",
+		map[string]interface{}{
+			"instance":        instanceName,
+			"target_instance": targetInstance,
+		},
+	)
 }
 
 func resolveMediaType(contentType string) string {
@@ -232,4 +334,16 @@ func resolveMediaType(contentType string) string {
 	default:
 		return "document"
 	}
+}
+
+func parseIgnoreJIDs(raw string) []string {
+	if strings.TrimSpace(raw) == "" {
+		return []string{}
+	}
+
+	var values []string
+	if err := json.Unmarshal([]byte(raw), &values); err != nil {
+		return []string{}
+	}
+	return values
 }

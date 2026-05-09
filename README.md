@@ -119,6 +119,7 @@ LOGTYPE=console
 | `GLOBAL_API_KEY` | API authentication key | **Required** |
 | `DATABASE_SAVE_MESSAGES` | Enable message storage | `false` |
 | `WADEBUG` | WhatsApp debug level | `INFO` |
+| `CHATWOOT_ENABLED` | Enable Chatwoot integration flows | `false` |
 
 ---
 
@@ -154,6 +155,43 @@ http://localhost:8080/swagger/index.html
 | `POST` | `/message/sendMedia` | Send media message |
 | `GET` | `/instance/{name}/status` | Get instance status |
 | `DELETE` | `/instance/{name}` | Delete instance |
+
+---
+
+## Chatwoot Integration
+
+Enable the integration by keeping `CHATWOOT_ENABLED=true` in your `.env` or Docker environment and making sure `SERVER_URL` or the public API base URL points to the Evolution GO server that will receive Chatwoot webhooks.
+
+The Manager exposes a dedicated Chatwoot page per instance at `/manager/chatwoot?instance={instanceName}` and the API endpoints below are available for configuration and runtime delivery:
+
+| Method | Endpoint | Description |
+|---|---|---|
+| `GET` | `/chatwoot/find/{instance}` | Load the saved Chatwoot settings for an instance |
+| `POST` | `/chatwoot/set/{instance}` | Create or update the Chatwoot settings for an instance |
+| `POST` | `/chatwoot/webhook/{instance}` | Receive Chatwoot outbound webhooks and send them to WhatsApp |
+
+Configuration payload highlights:
+
+| Field | Type | Purpose |
+|---|---|---|
+| `url` | `string` | Base URL of your Chatwoot installation |
+| `accountId` | `string` | Chatwoot account identifier used by the REST API |
+| `token` | `string` | Chatwoot API access token |
+| `enabled` | `bool` | Turns the integration on or off for the instance |
+| `nameInbox` | `string` | Inbox name used when resolving or auto-creating inboxes |
+| `signMsg` | `bool` | Adds sender identification to inbound messages |
+| `reopenConversation` | `bool` | Reopens resolved conversations before creating new ones |
+| `conversationPending` | `bool` | Creates new conversations with `pending` status |
+| `mergeBrazilContacts` | `bool` | Merges duplicate contacts found by phone search |
+| `importContacts` | `bool` | Imports WhatsApp contacts into Chatwoot |
+| `importMessages` | `bool` | Imports message history summaries into Chatwoot |
+| `daysLimitImportMessages` | `int` | Maximum age window, in days, for historical import |
+| `autoCreate` | `bool` | Creates the Chatwoot inbox automatically when missing |
+| `organization` | `string` | Optional organization field stored in settings |
+| `logo` | `string` | Optional logo URL stored in settings |
+| `ignoreJids` | `[]string` | JIDs that should be ignored by the integration |
+
+When `importMessages=true`, keep `DATABASE_SAVE_MESSAGES=true`; otherwise historical message import is skipped by design.
 
 ---
 

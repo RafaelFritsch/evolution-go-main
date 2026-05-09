@@ -1,0 +1,208 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Evolution GO Manager - Chatwoot</title>
+    <link rel="stylesheet" crossorigin href="/assets/index-BsyggRdn.css">
+    <style>
+      .chatwoot-shell {
+        min-height: 100vh;
+        background:
+          radial-gradient(circle at top left, rgba(20, 184, 166, 0.18), transparent 30%),
+          radial-gradient(circle at top right, rgba(59, 130, 246, 0.14), transparent 24%),
+          linear-gradient(180deg, rgba(15, 23, 42, 0.04), rgba(15, 23, 42, 0.01));
+      }
+      .chatwoot-card {
+        backdrop-filter: blur(14px);
+      }
+      .chatwoot-grid {
+        display: grid;
+        gap: 1rem;
+        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      }
+      .chatwoot-toggle-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 1rem;
+      }
+      .chatwoot-feedback[data-tone="success"] {
+        border-color: rgba(16, 185, 129, 0.35);
+        background: rgba(16, 185, 129, 0.12);
+        color: rgb(6, 95, 70);
+      }
+      .chatwoot-feedback[data-tone="error"] {
+        border-color: rgba(239, 68, 68, 0.35);
+        background: rgba(239, 68, 68, 0.12);
+        color: rgb(153, 27, 27);
+      }
+      .chatwoot-feedback[data-tone="info"] {
+        border-color: rgba(59, 130, 246, 0.35);
+        background: rgba(59, 130, 246, 0.1);
+        color: rgb(30, 64, 175);
+      }
+      @media (max-width: 768px) {
+        .chatwoot-actions {
+          flex-direction: column;
+          align-items: stretch;
+        }
+      }
+    </style>
+  </head>
+  <body class="bg-background text-foreground">
+    <div class="chatwoot-shell">
+      <main class="mx-auto max-w-6xl px-4 py-8 sm:px-6 lg:px-8">
+        <div class="mb-6 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+          <div>
+            <p class="text-xs font-semibold uppercase tracking-[0.28em] text-teal-600">Integracoes</p>
+            <h1 class="mt-2 text-3xl font-bold text-foreground">Chatwoot</h1>
+            <p id="pageSubtitle" class="mt-2 text-sm text-muted-foreground">Carregando configuracao da instancia...</p>
+          </div>
+          <div class="chatwoot-actions flex gap-3">
+            <a id="backToSettings" href="/manager/instances" class="inline-flex items-center justify-center rounded-md border border-input bg-background px-4 py-2 text-sm font-medium text-foreground transition hover:bg-accent">Voltar para a instancia</a>
+            <a href="/manager/instances" class="inline-flex items-center justify-center rounded-md border border-input bg-background px-4 py-2 text-sm font-medium text-foreground transition hover:bg-accent">Lista de instancias</a>
+          </div>
+        </div>
+
+        <div class="chatwoot-card overflow-hidden rounded-2xl border border-sidebar-border bg-card shadow-xl shadow-slate-950/5">
+          <div class="border-b border-sidebar-border bg-sidebar/60 px-6 py-5">
+            <div class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+              <div>
+                <h2 class="text-lg font-semibold text-foreground">Configuracao da integracao</h2>
+                <p class="mt-1 text-sm text-muted-foreground">Preencha os parametros usados para sincronizar conversas, contatos e inboxes com o Chatwoot.</p>
+              </div>
+              <div class="rounded-full border border-teal-500/30 bg-teal-500/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.24em] text-teal-700">
+                Manager UI
+              </div>
+            </div>
+          </div>
+
+          <div class="px-6 py-6">
+            <div id="feedback" class="chatwoot-feedback mb-5 hidden rounded-xl border px-4 py-3 text-sm font-medium"></div>
+
+            <form id="chatwootForm" class="space-y-6">
+              <section class="chatwoot-grid">
+                <div class="space-y-2">
+                  <label for="url" class="text-sm font-medium text-foreground">URL do Chatwoot</label>
+                  <input id="url" name="url" type="url" required placeholder="https://chatwoot.seudominio.com" class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring" />
+                </div>
+                <div class="space-y-2">
+                  <label for="accountId" class="text-sm font-medium text-foreground">Account ID</label>
+                  <input id="accountId" name="accountId" type="text" required placeholder="1" class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring" />
+                </div>
+                <div class="space-y-2">
+                  <label for="token" class="text-sm font-medium text-foreground">Token</label>
+                  <input id="token" name="token" type="password" required placeholder="api_access_token" class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring" />
+                </div>
+                <div class="space-y-2">
+                  <label for="nameInbox" class="text-sm font-medium text-foreground">Nome do Inbox</label>
+                  <input id="nameInbox" name="nameInbox" type="text" placeholder="Nome da instancia" class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring" />
+                </div>
+                <div class="space-y-2">
+                  <label for="organization" class="text-sm font-medium text-foreground">Organizacao</label>
+                  <input id="organization" name="organization" type="text" placeholder="Equipe Comercial" class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring" />
+                </div>
+                <div class="space-y-2">
+                  <label for="logo" class="text-sm font-medium text-foreground">Logo URL</label>
+                  <input id="logo" name="logo" type="url" placeholder="https://cdn.seudominio.com/logo.png" class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring" />
+                </div>
+              </section>
+
+              <section class="rounded-2xl border border-sidebar-border bg-sidebar/35 p-5">
+                <div class="mb-4">
+                  <h3 class="text-base font-semibold text-foreground">Comportamento da integracao</h3>
+                  <p class="mt-1 text-sm text-muted-foreground">Ative somente as automacoes que a instancia realmente precisa.</p>
+                </div>
+                <div class="chatwoot-grid">
+                  <label class="chatwoot-toggle-row rounded-xl border border-sidebar-border bg-background/70 px-4 py-3">
+                    <span>
+                      <span class="block text-sm font-medium text-foreground">Habilitar integracao</span>
+                      <span class="block text-xs text-muted-foreground">Liga ou desliga o encaminhamento Chatwoot.</span>
+                    </span>
+                    <input id="enabled" name="enabled" type="checkbox" class="h-4 w-4 rounded border-input" />
+                  </label>
+                  <label class="chatwoot-toggle-row rounded-xl border border-sidebar-border bg-background/70 px-4 py-3">
+                    <span>
+                      <span class="block text-sm font-medium text-foreground">Assinar mensagens</span>
+                      <span class="block text-xs text-muted-foreground">Adiciona o nome do remetente em mensagens recebidas.</span>
+                    </span>
+                    <input id="signMsg" name="signMsg" type="checkbox" class="h-4 w-4 rounded border-input" />
+                  </label>
+                  <label class="chatwoot-toggle-row rounded-xl border border-sidebar-border bg-background/70 px-4 py-3">
+                    <span>
+                      <span class="block text-sm font-medium text-foreground">Reabrir conversa</span>
+                      <span class="block text-xs text-muted-foreground">Reabre conversas resolvidas antes de criar novas.</span>
+                    </span>
+                    <input id="reopenConversation" name="reopenConversation" type="checkbox" class="h-4 w-4 rounded border-input" />
+                  </label>
+                  <label class="chatwoot-toggle-row rounded-xl border border-sidebar-border bg-background/70 px-4 py-3">
+                    <span>
+                      <span class="block text-sm font-medium text-foreground">Conversa pendente</span>
+                      <span class="block text-xs text-muted-foreground">Cria conversas novas com status pending.</span>
+                    </span>
+                    <input id="conversationPending" name="conversationPending" type="checkbox" class="h-4 w-4 rounded border-input" />
+                  </label>
+                  <label class="chatwoot-toggle-row rounded-xl border border-sidebar-border bg-background/70 px-4 py-3">
+                    <span>
+                      <span class="block text-sm font-medium text-foreground">Mesclar contatos BR</span>
+                      <span class="block text-xs text-muted-foreground">Une duplicatas encontradas para o mesmo telefone.</span>
+                    </span>
+                    <input id="mergeBrazilContacts" name="mergeBrazilContacts" type="checkbox" class="h-4 w-4 rounded border-input" />
+                  </label>
+                  <label class="chatwoot-toggle-row rounded-xl border border-sidebar-border bg-background/70 px-4 py-3">
+                    <span>
+                      <span class="block text-sm font-medium text-foreground">Importar contatos</span>
+                      <span class="block text-xs text-muted-foreground">Sincroniza a agenda do WhatsApp para o Chatwoot.</span>
+                    </span>
+                    <input id="importContacts" name="importContacts" type="checkbox" class="h-4 w-4 rounded border-input" />
+                  </label>
+                  <label class="chatwoot-toggle-row rounded-xl border border-sidebar-border bg-background/70 px-4 py-3">
+                    <span>
+                      <span class="block text-sm font-medium text-foreground">Importar mensagens</span>
+                      <span class="block text-xs text-muted-foreground">Cria notas privadas com historico recente.</span>
+                    </span>
+                    <input id="importMessages" name="importMessages" type="checkbox" class="h-4 w-4 rounded border-input" />
+                  </label>
+                  <label class="chatwoot-toggle-row rounded-xl border border-sidebar-border bg-background/70 px-4 py-3">
+                    <span>
+                      <span class="block text-sm font-medium text-foreground">Auto criar inbox</span>
+                      <span class="block text-xs text-muted-foreground">Cria ou reutiliza inbox automaticamente no Chatwoot.</span>
+                    </span>
+                    <input id="autoCreate" name="autoCreate" type="checkbox" class="h-4 w-4 rounded border-input" />
+                  </label>
+                </div>
+              </section>
+
+              <section class="chatwoot-grid">
+                <div class="space-y-2">
+                  <label for="daysLimitImportMessages" class="text-sm font-medium text-foreground">Dias limite de importacao</label>
+                  <input id="daysLimitImportMessages" name="daysLimitImportMessages" type="number" min="1" step="1" value="7" class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring" />
+                </div>
+                <div class="space-y-2">
+                  <label for="signDelimiter" class="text-sm font-medium text-foreground">Separador da assinatura</label>
+                  <input id="signDelimiter" name="signDelimiter" type="text" placeholder="\n" class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring" />
+                </div>
+                <div class="space-y-2 md:col-span-2">
+                  <label for="ignoreJids" class="text-sm font-medium text-foreground">Ignore JIDs</label>
+                  <textarea id="ignoreJids" name="ignoreJids" rows="3" placeholder="1203630xxxx@g.us&#10;5511999999999@s.whatsapp.net" class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"></textarea>
+                  <p class="text-xs text-muted-foreground">Informe um JID por linha para ignorar grupos ou contatos especificos.</p>
+                </div>
+              </section>
+
+              <div class="flex flex-col gap-3 border-t border-sidebar-border pt-5 md:flex-row md:items-center md:justify-between">
+                <p class="text-sm text-muted-foreground">As alteracoes sao aplicadas via API `/chatwoot/set/{instance}` e reutilizam a autenticacao do Manager.</p>
+                <div class="flex flex-col gap-3 sm:flex-row">
+                  <button id="removeButton" type="button" class="inline-flex items-center justify-center rounded-md border border-red-500/30 bg-red-500/10 px-4 py-2 text-sm font-medium text-red-700 transition hover:bg-red-500/15">Remover integracao</button>
+                  <button id="saveButton" type="submit" class="inline-flex items-center justify-center rounded-md bg-primary px-5 py-2 text-sm font-medium text-primary-foreground transition hover:bg-primary/90">Salvar</button>
+                </div>
+              </div>
+            </form>
+          </div>
+        </div>
+      </main>
+    </div>
+
+    <script src="/assets/chatwoot-manager.js"></script>
+  </body>
+</html>

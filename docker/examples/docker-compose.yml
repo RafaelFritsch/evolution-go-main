@@ -43,6 +43,9 @@ services:
       NATS_URL: ""
       NATS_GLOBAL_ENABLED: "false"
 
+      # Chatwoot (Opcional)
+      # CHATWOOT_ENABLED: "true"
+
       # Armazenamento de Mídia (Opcional)
       MINIO_ENABLED: "false"
 

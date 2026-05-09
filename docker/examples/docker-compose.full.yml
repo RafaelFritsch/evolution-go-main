@@ -39,6 +39,9 @@ services:
       # Webhook
       WEBHOOK_URL: "https://seu-webhook.com/endpoint"
 
+      # Chatwoot (Opcional)
+      # CHATWOOT_ENABLED: "true"
+
       # RabbitMQ
       AMQP_URL: "amqp://admin:admin@rabbitmq:5672/default"
       AMQP_GLOBAL_ENABLED: "true"
