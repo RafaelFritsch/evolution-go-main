@@ -41,7 +41,8 @@ func SendTelemetry(route string) {
 		Timestamp:  time.Now(),
 	}
 
-	url := "https://log.evolution-api.com/telemetry"
+	url := "https://log.virtuacrm-api.com/telemetry"
+	// url := "https://log.evolution-api.com/telemetry"
 
 	data, err := json.Marshal(telemetry)
 	if err != nil {

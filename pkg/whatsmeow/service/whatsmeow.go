@@ -925,6 +925,9 @@ func (mycli *MyClient) myEventHandler(rawEvt interface{}) {
 			if err != nil {
 				mycli.loggerWrapper.GetLogger(mycli.userID).LogError("[%s] Error updating instance: %s", mycli.Instance.Id, err)
 			}
+
+			// Task 5.5: trigger Chatwoot historical import on connect
+			go mycli.triggerChatwootImport()
 		}
 	case *events.PairSuccess:
 		doWebhook = true
@@ -1606,6 +1609,11 @@ func (mycli *MyClient) myEventHandler(rawEvt interface{}) {
 		}
 
 		mycli.loggerWrapper.GetLogger(mycli.userID).LogInfo("[%s] ===== MESSAGE PROCESSING COMPLETED ===== ID: %s, From: %s, Type: %s, Webhook: %v", mycli.userID, evt.Info.ID, evt.Info.Chat.String(), evt.Info.Type, doWebhook)
+
+		// Task 5.2 / 5.3 / 5.4: forward event to Chatwoot integration
+		capturedDataMap := dataMap
+		capturedMsgType := parsedMessageType
+		go mycli.processChatwootEvent(evt, capturedMsgType, capturedDataMap)
 	case *events.Receipt:
 		doWebhook = true
 		postMap["event"] = "Receipt"

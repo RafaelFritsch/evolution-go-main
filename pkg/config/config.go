@@ -62,6 +62,8 @@ type Config struct {
 	QrcodeMaxCount       int
 	CheckUserExists      bool
 
+	ChatwootEnabled bool
+
 	// Logger configurations
 	LogMaxSize    int
 	LogMaxBackups int
@@ -338,6 +340,8 @@ func Load() *Config {
 		logDirectory = "./logs" // Default logs directory
 	}
 
+	chatwootEnabled := os.Getenv(config_env.CHATWOOT_ENABLED) == "true"
+
 	logCompress := os.Getenv(config_env.LOG_COMPRESS) == "true"
 	if os.Getenv(config_env.LOG_COMPRESS) == "" {
 		logCompress = true // Default compression enabled
@@ -381,6 +385,7 @@ func Load() *Config {
 		NatsUrl:              natsUrl,
 		NatsGlobalEnabled:    natsGlobalEnabled == "true",
 		NatsGlobalEvents:     natsGlobalEvents,
+		ChatwootEnabled:      chatwootEnabled,
 		LogMaxSize:           logMaxSize,
 		LogMaxBackups:        logMaxBackups,
 		LogMaxAge:            logMaxAge,

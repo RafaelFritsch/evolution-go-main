@@ -21,6 +21,10 @@ import (
 	"gorm.io/gorm"
 	_ "modernc.org/sqlite"
 
+	chatwoot_controller "github.com/EvolutionAPI/evolution-go/pkg/chatwoot/controller"
+	chatwoot_model "github.com/EvolutionAPI/evolution-go/pkg/chatwoot/model"
+	chatwoot_router "github.com/EvolutionAPI/evolution-go/pkg/chatwoot/router"
+	chatwoot_service "github.com/EvolutionAPI/evolution-go/pkg/chatwoot/service"
 	call_handler "github.com/EvolutionAPI/evolution-go/pkg/call/handler"
 	call_service "github.com/EvolutionAPI/evolution-go/pkg/call/service"
 	chat_handler "github.com/EvolutionAPI/evolution-go/pkg/chat/handler"
@@ -236,6 +240,12 @@ func setupRouter(db *gorm.DB, authDB *sql.DB, sqliteDB *sql.DB, config *config.C
 		server_handler.NewServerHandler(),
 	).AssignRoutes(r)
 
+	// Chatwoot integration
+	chatwootSvc := chatwoot_service.NewChatwootService(db, config, loggerWrapper, clientPointer)
+	chatwoot_service.Register(chatwootSvc)
+	chatwootCtrl := chatwoot_controller.NewController(chatwootSvc, sendMessageService, instanceRepository)
+	chatwoot_router.RegisterRoutes(r, chatwootCtrl, auth_middleware.NewMiddleware(config, instanceService).AuthAdmin)
+
 	if config.ConnectOnStartup {
 		go whatsmeowService.ConnectOnStartup(config.ClientName)
 	}
@@ -257,7 +267,13 @@ func setupRouter(db *gorm.DB, authDB *sql.DB, sqliteDB *sql.DB, config *config.C
 }
 
 func migrate(db *gorm.DB) {
-	err := db.AutoMigrate(&instance_model.Instance{}, &message_model.Message{}, &label_model.Label{})
+	err := db.AutoMigrate(
+		&instance_model.Instance{},
+		&message_model.Message{},
+		&label_model.Label{},
+		&chatwoot_model.ChatwootSetting{},
+		&chatwoot_model.ChatwootMessageMapping{},
+	)
 
 	if err != nil {
 		log.Fatal(err)
