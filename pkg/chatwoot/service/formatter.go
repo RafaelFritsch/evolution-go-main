@@ -5,9 +5,10 @@ import "strings"
 // FormatWhatsAppToMarkdown converts WhatsApp text formatting to standard Markdown.
 //
 // WhatsApp  → Markdown
-//   *bold*  → **bold**
-//   ~strike~ → ~~strike~~
-//   _italic_ stays _italic_ (already compatible)
+//
+//	*bold*  → **bold**
+//	~strike~ → ~~strike~~
+//	_italic_ stays _italic_ (already compatible)
 func FormatWhatsAppToMarkdown(text string) string {
 	if text == "" {
 		return text

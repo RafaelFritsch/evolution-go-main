@@ -29,7 +29,7 @@ var _k0 = []byte{0xe8, 0x35, 0xe5, 0x54, 0x1f, 0xc9, 0x49, 0x48, 0x2d, 0x37, 0xb
 
 var (
 	_eo2m string
-	_wa    string
+	_wa   string
 )
 
 func _hcg() string {
@@ -145,11 +145,11 @@ func _zy(resp *http.Response) error {
 }
 
 type RuntimeConfig struct {
-	ID         uint      `gorm:"primaryKey;autoIncrement" json:"id"`
-	Key        string    `gorm:"uniqueIndex;size:100;not null" json:"key"`
-	Value      string    `gorm:"type:text;not null" json:"value"`
-	CreatedAt  time.Time `json:"created_at"`
-	UpdatedAt  time.Time `json:"updated_at"`
+	ID        uint      `gorm:"primaryKey;autoIncrement" json:"id"`
+	Key       string    `gorm:"uniqueIndex;size:100;not null" json:"key"`
+	Value     string    `gorm:"type:text;not null" json:"value"`
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
 }
 
 func (RuntimeConfig) TableName() string {
@@ -374,18 +374,18 @@ const (
 )
 
 type RuntimeContext struct {
-	_h7dl       string
+	_h7dl string
 	_p1wx string // GLOBAL_API_KEY from .env — used as token for licensing check
 	_yt   string
-	_j9       atomic.Bool
-	_e2      [32]byte // Derived from activation — required by ValidateContext
-	mu           sync.RWMutex
-	_uz       string // Registration URL shown to users before activation
-	_7c     string // Registration token for polling
-	_9dg         string
-	_ia      string
-	_ihu      atomic.Int64 // Messages sent since last heartbeat
-	_56      atomic.Int64 // Messages received since last heartbeat
+	_j9   atomic.Bool
+	_e2   [32]byte // Derived from activation — required by ValidateContext
+	mu    sync.RWMutex
+	_uz   string // Registration URL shown to users before activation
+	_7c   string // Registration token for polling
+	_9dg  string
+	_ia   string
+	_ihu  atomic.Int64 // Messages sent since last heartbeat
+	_56   atomic.Int64 // Messages received since last heartbeat
 }
 
 var _693 atomic.Pointer[RuntimeContext]
@@ -447,8 +447,8 @@ func InitializeRuntime(_9dg, _ia, _p1wx string) *RuntimeContext {
 	}
 
 	rc := &RuntimeContext{
-		_9dg:         _9dg,
-		_ia:      _ia,
+		_9dg:  _9dg,
+		_ia:   _ia,
 		_p1wx: _p1wx,
 	}
 
@@ -714,7 +714,7 @@ func LicenseRoutes(eng *gin.Engine, rc *RuntimeContext) {
 
 			exchangeResp, err := _hvc("/v1/register/exchange", map[string]string{
 				"authorization_code": code,
-				"instance_id":       rc._yt,
+				"instance_id":        rc._yt,
 			})
 			if err != nil {
 				c.JSON(http.StatusBadGateway, gin.H{

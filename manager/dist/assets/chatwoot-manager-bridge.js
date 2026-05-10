@@ -42,8 +42,11 @@
   }
 
   function mountHeaderButton(href) {
-    if (document.getElementById(HEADER_BUTTON_ID)) {
-      document.getElementById(HEADER_BUTTON_ID).href = href;
+    const existing = document.getElementById(HEADER_BUTTON_ID);
+    if (existing) {
+      if (existing.getAttribute("href") !== href) {
+        existing.setAttribute("href", href);
+      }
       return;
     }
 
@@ -79,8 +82,15 @@
       document.body.appendChild(rail);
     }
 
-    rail.querySelector(".chatwoot-manager-rail-copy").textContent = instanceName;
-    rail.querySelector('[data-role="chatwoot-link"]').href = href;
+    const copy = rail.querySelector(".chatwoot-manager-rail-copy");
+    if (copy && copy.textContent !== instanceName) {
+      copy.textContent = instanceName;
+    }
+
+    const link = rail.querySelector('[data-role="chatwoot-link"]');
+    if (link && link.getAttribute("href") !== href) {
+      link.setAttribute("href", href);
+    }
   }
 
   function installStyle() {

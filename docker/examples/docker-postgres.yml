@@ -1,0 +1,30 @@
+version: "3.8"
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: evolution-postgres
+    restart: unless-stopped
+
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: postgres
+
+    ports:
+      - "5432:5432"
+
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      # Use esta linha somente se o arquivo init-db.sql existir
+      - ./init-db.sql:/docker-entrypoint-initdb.d/init-db.sql
+
+    networks:
+      - evolution_network
+
+volumes:
+  postgres_data:
+
+networks:
+  evolution_network:
+    driver: bridge

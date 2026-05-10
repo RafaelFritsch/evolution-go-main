@@ -209,7 +209,7 @@ Instale estas ferramentas para habilitar recursos adicionais:
 
 ```bash
 # Hot reload
-go install github.com/cosmtrek/air@latest
+go install github.com/air-verse/air@latest
 
 # Linter
 go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
